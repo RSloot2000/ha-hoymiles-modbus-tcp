@@ -39,12 +39,15 @@ class HoymilesConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(self, user_input=None):
         errors = {}
-
-        if user_input is not None:
-            if await self._test_connection(user_input["dtu_ip"], user_input["dtu_port"]):
-                return self.async_create_entry(title="Hoymiles Modbus TCP", data=user_input)
-            else:
+        try:
+            if user_input is not None:
+                if await self._test_connection(user_input["dtu_ip"], user_input["dtu_port"]):
+                    return self.async_create_entry(title="Hoymiles Modbus TCP", data=user_input)
                 errors["base"] = "cannot_connect"
+        except Exception:
+            # Surface any unexpected failure as a form error instead of a 500.
+            _LOGGER.exception("Unexpected error configuring Hoymiles DTU")
+            errors["base"] = "unexpected"
 
         return self.async_show_form(
             step_id="user",
@@ -85,20 +88,29 @@ class HoymilesOptionsFlowHandler(config_entries.OptionsFlow):
         })
 
     async def async_step_init(self, user_input=None):
-        if user_input is not None:
-            if await self._test_connection(user_input["dtu_ip"], user_input["dtu_port"]):
-                # Save the updated options
-                self.hass.config_entries.async_update_entry(self.config_entry, data=user_input)
-                return self.async_create_entry(title="", data={})
+        try:
+            if user_input is not None:
+                if await self._test_connection(user_input["dtu_ip"], user_input["dtu_port"]):
+                    # Save the updated options
+                    self.hass.config_entries.async_update_entry(self.config_entry, data=user_input)
+                    return self.async_create_entry(title="", data={})
+                errors = {"base": "cannot_connect"}
             else:
-                return self.async_show_form(
-                    step_id="init",
-                    data_schema=self._create_data_schema(self.config_entry.data),
-                    errors={"base": "cannot_connect"},
-                )
-        
-        # Pre-fill the form with existing values
-        return self.async_show_form(
-            step_id="init",
-            data_schema=self._create_data_schema(self.config_entry.data),
-        )
+                errors = {}
+
+            # Pre-fill the form with existing values
+            return self.async_show_form(
+                step_id="init",
+                data_schema=self._create_data_schema(self.config_entry.data),
+                errors=errors,
+            )
+        except Exception:
+            # Surface any unexpected failure as a form error instead of a 500.
+            # DATA_SCHEMA is module-level and already constructed, so this fallback
+            # cannot itself fail and guarantees we never escape to a 500.
+            _LOGGER.exception("Unexpected error opening the Hoymiles options flow")
+            return self.async_show_form(
+                step_id="init",
+                data_schema=DATA_SCHEMA,
+                errors={"base": "unexpected"},
+            )
