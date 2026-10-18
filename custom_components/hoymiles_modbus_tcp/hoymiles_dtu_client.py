@@ -317,7 +317,7 @@ class HoymilesDtuClient:
         if not self.is_connected() or self.client is None:
             raise Exception("DTU connection is not available")
 
-        result = await self.client.read_coils(port, 8)  # Only read 8 bits
+        result = await self.client.read_coils(port, count=8)  # Only read 8 bits
         bits = result.bits[:8]  # Ensure we're using exactly 8 bits
 
         logging.debug(f"Read {len(bits)} bits from {port}: {bits}")
