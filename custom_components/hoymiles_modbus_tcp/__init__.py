@@ -21,7 +21,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     
     hass.data[DOMAIN][entry.entry_id] = client
     _LOGGER.debug("Hoymiles Modbus TCP config entry setup complete: %s", entry.data)  
-    await hass.config_entries.async_forward_entry_setups(entry, ["sensor", "number"])
+    await hass.config_entries.async_forward_entry_setups(entry, ["sensor", "number", "binary_sensor"])
 
     
     return True
@@ -29,6 +29,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await hass.config_entries.async_forward_entry_unload(entry, "sensor")
     await hass.config_entries.async_forward_entry_unload(entry, "number")
+    await hass.config_entries.async_forward_entry_unload(entry, "binary_sensor")
     # Clean up the client instance
     hass.data[DOMAIN].pop(entry.entry_id)
     return True

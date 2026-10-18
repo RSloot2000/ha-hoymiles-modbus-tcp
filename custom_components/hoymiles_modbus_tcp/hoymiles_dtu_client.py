@@ -312,10 +312,12 @@ class HoymilesDtuClient:
 
     async def read_power_level(self):
         port = 0xC001
-        if not self.is_connected():
-          self.connect()
+        if not await self.connect():
+            raise Exception("Failed to connect to DTU")
+        if not self.is_connected() or self.client is None:
+            raise Exception("DTU connection is not available")
 
-        result = self.client.read_coils(port, 8)  # Only read 8 bits
+        result = await self.client.read_coils(port, 8)  # Only read 8 bits
         bits = result.bits[:8]  # Ensure we're using exactly 8 bits
 
         logging.debug(f"Read {len(bits)} bits from {port}: {bits}")
@@ -334,17 +336,19 @@ class HoymilesDtuClient:
           percentage: Power level percentage (0-255)
       """
 
-        # Ensure the client is connected
-      if not self.is_connected():
-          self.connect()
-      
+      # Ensure the client is connected
+      if not await self.connect():
+          raise Exception("Failed to connect to DTU")
+      if not self.is_connected() or self.client is None:
+          raise Exception("DTU connection is not available")
+
       # Validate percentage range
       if not (5 <= percentage <= 100):
           raise ValueError("Percentage must be between 0 and 100")
-      
+
       # Convert percentage to 8 bits (LSB first)
       bits = [(percentage >> i) & 1 for i in range(8)]
-      logging.debug(f"Writing {percentage}% as bits:", bits)
+      logging.debug(f"Writing {percentage}% as bits {bits}")
       
       # Write the coils
       result = await self.client.write_coils(port, bits)

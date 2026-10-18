@@ -70,15 +70,31 @@ class HoymilesDTULevel(NumberEntity):
             _LOGGER.debug(f"[numbers] Setting power level to {value}% for {self._attr_name}")
             
             # Call the client method to write the power level
-            await self._client.write_power_level(0xC001, int(value))
-            
-            # Update the native value and timestamp
-            self._attr_native_value = value
-            self._last_write = now
-            self._pending_value = None
-            
-            _LOGGER.info(f"[numbers] Successfully set power level to {value}% for {self._attr_name}")
-            
+            ok = await self._client.write_power_level(0xC001, int(value))
+
+            if ok:
+                # Update the native value and timestamp on success
+                self._attr_native_value = value
+                self._last_write = now
+                self._pending_value = None
+                _LOGGER.info(f"[numbers] Successfully set power level to {value}% for {self._attr_name}")
+            else:
+                _LOGGER.error(
+                    f"[numbers] power level write rejected by DTU for {value}% for {self._attr_name}"
+                )
         except Exception as e:
             _LOGGER.error(f"[numbers] Failed to set power level to {value}% for {self._attr_name}: {e}")
             raise
+
+    @property
+    def scan_interval(self):
+        """Return the poll interval in seconds."""
+        return 30
+
+    async def async_update(self):
+        """Read back the actual power level from the DTU so the entity reflects device reality."""
+        try:
+            pct = await self._client.read_power_level()
+            self._attr_native_value = pct
+        except Exception as e:
+            _LOGGER.error(f"[numbers] failed to read power level during poll: {e}")
